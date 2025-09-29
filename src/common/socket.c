@@ -2,6 +2,8 @@
 
 #if PK_ENABLE_OS
 
+#if !defined(PK_ENABLE_SOCKET) || PK_ENABLE_SOCKET
+
 #include <stddef.h>
 
 #if defined (_WIN32) || defined (_WIN64)
@@ -122,5 +124,57 @@ int c11_socket_get_last_error(){
 
 #undef SOCKET_HANDLERTOFD
 #undef SOCKET_FDTOHANDLER
+
+
+#else // !PK_ENABLE_SOCKET
+
+#include <errno.h>
+
+
+c11_socket_handler c11_socket_create(int family, int type, int protocol){
+    return c11_socket_invalid_socket_handler();
+}
+
+int c11_socket_bind(c11_socket_handler socket, const char* hostname, unsigned short port){
+    return -1;
+}
+
+int c11_socket_listen(c11_socket_handler socket, int backlog){
+    return -1;
+}
+
+c11_socket_handler c11_socket_accept(c11_socket_handler socket, char* client_ip, unsigned short* client_port){
+    return c11_socket_invalid_socket_handler();
+}
+int c11_socket_connect(c11_socket_handler socket, const char* server_ip, unsigned short server_port){
+    return -1;
+}
+
+int c11_socket_recv(c11_socket_handler socket, char* buffer, int maxsize){
+    return -1;
+}
+
+int c11_socket_send(c11_socket_handler socket, const char* senddata, int datalen){
+    return -1;
+}
+
+int c11_socket_close(c11_socket_handler socket){
+    return -1;
+}
+
+int c11_socket_set_block(c11_socket_handler socket,int flag){
+    return -1;
+}
+
+c11_socket_handler c11_socket_invalid_socket_handler(){
+    return (void*)(uintptr_t)(-1);
+}
+
+
+int c11_socket_get_last_error(){
+    return ENOTSUP;
+}
+
+#endif // PK_ENABLE_SOCKET
 
 #endif // PK_ENABLE_OS
