@@ -1,0 +1,10 @@
+#include <time.h>
+
+int clock_gettime(clockid_t clock_id, struct timespec *tp)
+{
+    int clk = clock();
+    tp->tv_sec = clk / CLOCKS_PER_SEC;
+    tp->tv_nsec = clk * (1000000000 / CLOCKS_PER_SEC);
+    return 0;
+}
+

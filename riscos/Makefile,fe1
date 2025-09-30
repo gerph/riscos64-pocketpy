@@ -1,0 +1,130 @@
+#!/usr/bin/env riscos-amu -f
+# Makefile for PocketPy
+#
+
+VPATH = @ common compiler bindings debugger interpreter objects modules public
+
+#
+# Program specific options:
+#
+COMPONENT  = PocketPy
+
+# Specifies additional targets for startup
+#INITTARGET = inittarget
+
+# Specifies additional targets for clean
+#CLEANTARGET = cleantarget
+
+# aif, for linked objects
+# aof, for a partially linked AOF object
+# util, for utilities built with objasm
+# basic, for BASIC tools
+TYPE       = aif
+
+# The file to output (defaults ${COMPONENT})
+#TARGET = <filename>
+
+# Comma-separated list of paths to use for includes, such as:
+#	C:LibName.
+INCLUDES   = include.
+
+# Space separated list of defines to set, eg -DDEBUG
+CDEFINES   = -DPK_ENABLE_THREADS=0 -DPK_ENABLE_SOCKET=0
+
+# Space separated list of libraries to link against, eg C:LibName.o.libLibName
+LIBS       = ${CLIB}
+
+# Objects to build, using the format o.<name> (will be varied for build type)
+OBJS       = \
+		o.py_array \
+		o.py_mappingproxy \
+		o.py_method \
+		o.py_number \
+		o.py_object \
+		o.py_property \
+		o.py_range \
+		o.py_str \
+		o.algorithm \
+		o.chunkedvector \
+		o.memorypool \
+		o.name \
+		o.smallmap \
+		o.socket \
+		o.sourcedata \
+		o.sstream \
+		o.str \
+		o.threads \
+		o.vector \
+		o._generated \
+		o.compiler \
+		o.lexer \
+		o.core \
+		o.dap \
+		o.ceval \
+		o.dll \
+		o.frame \
+		o.generator \
+		o.heap \
+		o.line_profiler \
+		o.objectpool \
+		o.typeinfo \
+		o.vm \
+		o.vmx \
+		o.array2d \
+		o.base64 \
+		o.builtins \
+		o.colorcvt \
+		o.conio \
+		o.dis \
+		o.easing \
+		o.enum \
+		o.gc \
+		o.importlib \
+		o.inspect \
+		o.json \
+		o.lz4 \
+		o.math \
+		o.os \
+		o.pickle \
+		o.pkpy \
+		o.random \
+		o.time \
+		o.traceback \
+		o.unicodedata \
+		o.vmath \
+		o.bintree \
+		o.codeobject \
+		o.container \
+		o.namedict \
+		o.object \
+		o.Bindings \
+		o.CodeExecution \
+		o.DictSlots \
+		o.FrameOps \
+		o.GlobalSetup \
+		o.Inspection \
+		o.ModuleSystem \
+		o.PyDict \
+		o.PyException \
+		o.PyList \
+		o.PySlice \
+		o.PythonOps \
+		o.PyTuple \
+		o.StackOps \
+		o.TypeSystem \
+		o.ValueCast \
+		o.ValueCreation \
+		\
+		o.riscos \
+		o.main
+
+
+# Space separated list of XML files for building documentation.
+#DOCSRC = <prm-in-xml-sources>
+
+
+include LibraryCommand
+
+
+#---------------------------------------------------------------------------
+# Dynamic dependencies:
