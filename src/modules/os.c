@@ -24,6 +24,33 @@ int platform_chdir(const char* path) { return chdir(path); }
 bool platform_getcwd(char* buf, size_t size) { return getcwd(buf, size) != NULL; }
 
 bool platform_path_exists(const char* path) { return access(path, F_OK) == 0; }
+
+#elif PY_SYS_PLATFORM == 7 /* RISC OS */
+
+#include "osfile.h"
+#include "osfscontrol.h"
+
+int platform_chdir(const char* path) {
+    return (xosfscontrol_dir(path) != NULL) ? 0 : -1;
+}
+
+bool platform_getcwd(char* buf, size_t size) {
+    os_error *err;
+    err = xosfscontrol_canonicalise_path("@", buf,
+                                         NULL, NULL, size,
+                                         NULL);
+    return (err != NULL) ? false : true;
+}
+
+bool platform_path_exists(const char* path) {
+    os_error *err;
+    fileswitch_object_type obj_type;
+
+    err = xosfile_read(path, &obj_type, NULL, NULL, NULL, NULL);
+    if (err)
+        return false;
+    return (obj_type == 0) ? true : false;
+}
 #else
 
 int platform_chdir(const char* path) { return -1; }

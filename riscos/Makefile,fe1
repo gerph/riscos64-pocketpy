@@ -26,13 +26,13 @@ TYPE       = aif
 
 # Comma-separated list of paths to use for includes, such as:
 #	C:LibName.
-INCLUDES   = include.
+INCLUDES   = include.,c:OSLib.
 
 # Space separated list of defines to set, eg -DDEBUG
 CDEFINES   = -DPK_ENABLE_THREADS=0 -DPK_ENABLE_SOCKET=0
 
 # Space separated list of libraries to link against, eg C:LibName.o.libLibName
-LIBS       = ${CLIB}
+LIBS       = ${CLIB} ${OSLIB}
 
 # Objects to build, using the format o.<name> (will be varied for build type)
 OBJS       = \

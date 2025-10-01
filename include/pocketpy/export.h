@@ -44,6 +44,10 @@
     #define PK_EXPORT __attribute__((visibility("default")))
     #define PY_SYS_PLATFORM     5
     #define PY_SYS_PLATFORM_STRING "linux"
+#elif __riscos
+    #define PK_API
+    #define PY_SYS_PLATFORM     7
+    #define PY_SYS_PLATFORM_STRING "riscos"
 #else
     #define PK_API
     #define PY_SYS_PLATFORM     6
