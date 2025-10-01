@@ -98,6 +98,45 @@ int _getch() {
 
     return ch;
 }
+
+#elif PY_SYS_PLATFORM == 7
+
+static int pending_key = -1;
+
+#include "os.h"
+#include "osbyte.h"
+
+int _kbhit() {
+    /* Is there a key waiting in the input buffer */
+    int ch;
+    int state = 255;
+    if (pending_key != -1)
+        return true;
+
+    if (xos_byte(osbyte_IN_KEY, 0, 0, &ch, &state) != NULL)
+        return false; /* Error means nothing waiting */
+    if (state == 0)
+        pending_key = ch;
+    else if (state == 27)
+        pending_key = ch;
+    return pending_key;
+}
+
+int _getch() {
+    int ch = 0;
+    /* Read any key that's waiting in the input buffer */
+    if (pending_key != -1)
+    {
+        /* They had called _kbhit to check for a key press */
+        ch = pending_key;
+        pending_key = -1;
+        return ch;
+    }
+    if (xos_readc((char*)&ch, NULL) != NULL)
+        return -1;
+    return ch;
+}
+
 #endif
 
 #if PK_IS_DESKTOP_PLATFORM && PK_ENABLE_OS

@@ -54,7 +54,7 @@
     #define PY_SYS_PLATFORM_STRING "unknown"
 #endif
 
-#if PY_SYS_PLATFORM == 0 || PY_SYS_PLATFORM == 3 || PY_SYS_PLATFORM == 5
+#if PY_SYS_PLATFORM == 0 || PY_SYS_PLATFORM == 3 || PY_SYS_PLATFORM == 5 || PY_SYS_PLATFORM == 7
     #define PK_IS_DESKTOP_PLATFORM 1
 #else
     #define PK_IS_DESKTOP_PLATFORM 0
