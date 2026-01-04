@@ -64,13 +64,25 @@ int main(int argc, char** argv) {
         if(profile) printf("Warning: --profile is ignored in REPL mode.\n");
         if(debug) printf("Warning: --debug is ignored in REPL mode.\n");
 
+#ifdef __riscos
+#include "VersionNum"
+        printf("pocketpy " PK_VERSION " (RISC OS: " Module_FullVersionAndDate ") ");
+#else
         printf("pocketpy " PK_VERSION " (" __DATE__ ", " __TIME__ ") ");
+#endif
         printf("[%d bit] on %s", (int)(sizeof(void*) * 8), PY_SYS_PLATFORM_STRING);
 #ifndef NDEBUG
         printf(" (DEBUG)");
 #endif
         printf("\n");
+#ifdef __riscos
+        /* Direct people to the RISC OS specific port, so the upstream isn't
+         * dealing with issues that are mine.
+         */
+        printf("https://github.com/gerph/riscos64-pocketpy\n");
+#else
         printf("https://github.com/pocketpy/pocketpy\n");
+#endif
         printf("Type \"exit()\" to exit.\n");
 
         while(true) {
@@ -99,7 +111,11 @@ int main(int argc, char** argv) {
             else {
                 if(profile) {
                     char* json_report = py_profiler_report();
+#ifdef __riscos
+                    FILE* report_file = fopen("profiler_report/json", "w");
+#else
                     FILE* report_file = fopen("profiler_report.json", "w");
+#endif
                     if(report_file) {
                         fprintf(report_file, "%s", json_report);
                         fclose(report_file);
