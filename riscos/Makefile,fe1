@@ -29,7 +29,9 @@ TYPE       = aif
 INCLUDES   = include.,c:OSLib.
 
 # Space separated list of defines to set, eg -DDEBUG
-CDEFINES   = -DPK_ENABLE_THREADS=0 -DPK_ENABLE_SOCKET=0
+CDEFINES   = -DPK_ENABLE_THREADS=0 -DPK_ENABLE_SOCKET=0 \
+			 -DPK_NAMES_HASH_SIZE=256 \
+			 -DPK_VM_STACK_SIZE=2048
 
 # Space separated list of libraries to link against, eg C:LibName.o.libLibName
 LIBS       = ${CLIB} ${OSLIB}

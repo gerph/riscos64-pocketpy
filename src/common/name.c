@@ -16,7 +16,7 @@ typedef struct NameBucket {
 } NameBucket;
 
 static struct {
-    NameBucket* table[0x10000];
+    NameBucket* table[PK_NAMES_HASH_SIZE];
 #if PK_ENABLE_THREADS
     atomic_flag lock;
 #endif
@@ -33,7 +33,7 @@ void pk_names_initialize() {
 }
 
 void pk_names_finalize() {
-    for(int i = 0; i < 0x10000; i++) {
+    for(int i = 0; i < PK_NAMES_HASH_SIZE; i++) {
         NameBucket* p = pk_string_table.table[i];
         while(p) {
             NameBucket* next = p->next;
@@ -51,7 +51,7 @@ py_Name py_namev(c11_sv name) {
     }
 #endif
     uint64_t hash = c11_sv__hash(name);
-    int index = hash & 0xFFFF;
+    int index = hash & (PK_NAMES_HASH_SIZE - 1);
     NameBucket* p = pk_string_table.table[index];
     NameBucket* prev = NULL;
     bool found = false;

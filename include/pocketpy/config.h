@@ -48,6 +48,13 @@
 #define PK_MAX_CO_VARNAMES          64
 #endif
 
+
+// Size of the name hash lookup table; must be a power of 2.
+// This memory will be allocated statically; 0x10000 => 512K on a 64bit system
+#ifndef PK_NAMES_HASH_SIZE          // can be overridden by cmake
+#define PK_NAMES_HASH_SIZE          0x10000
+#endif
+
 /*************** internal settings ***************/
 // This is the maximum character length of a module path
 #define PK_MAX_MODULE_PATH_LEN      63
