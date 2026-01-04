@@ -33,10 +33,15 @@ int main(int argc, char** argv) {
 #endif
 
     bool profile = false;
+    bool version = false;
     bool debug = false;
     const char* filename = NULL;
 
     for(int i = 1; i < argc; i++) {
+        if(strcmp(argv[i], "--version") == 0) {
+            version = true;
+            continue;
+        }
         if(strcmp(argv[i], "--profile") == 0) {
             profile = true;
             continue;
@@ -49,7 +54,8 @@ int main(int argc, char** argv) {
             filename = argv[i];
             continue;
         }
-        printf("Usage: pocketpy [--profile] [--debug] filename\n");
+        printf("Usage: pocketpy [--version] [--profile] [--debug] filename\n");
+        exit(1); /* We should stop when we don't recognise the options */
     }
 
     if(debug && profile) {
@@ -60,7 +66,7 @@ int main(int argc, char** argv) {
     py_initialize();
     py_sys_setargv(argc, argv);
 
-    if(filename == NULL) {
+    if(filename == NULL || version) {
         if(profile) printf("Warning: --profile is ignored in REPL mode.\n");
         if(debug) printf("Warning: --debug is ignored in REPL mode.\n");
 
@@ -75,6 +81,8 @@ int main(int argc, char** argv) {
         printf(" (DEBUG)");
 #endif
         printf("\n");
+        if (version)
+            exit(0);
 #ifdef __riscos
         /* Direct people to the RISC OS specific port, so the upstream isn't
          * dealing with issues that are mine.
