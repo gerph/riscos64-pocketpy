@@ -12,6 +12,10 @@
 #define NAME c11_fixedhash_d2f
 #endif
 
+/* Size of the hash; must be a power of 2 */
+//#define FIXED_HASH_SIZE (0x10000)
+#define FIXED_HASH_SIZE (0x100) /* Smaller footprint */
+
 /* Optional Input */
 #ifndef hash
 #define hash(a) ((uint64_t)(a))
@@ -38,7 +42,7 @@ typedef struct {
 
 typedef struct {
     int length;
-    uint16_t indices[0x10000];
+    uint16_t indices[FIXED_HASH_SIZE];
     c11_chunkedvector /*T=FixedHashEntry*/ entries;
 } NAME;
 
@@ -76,14 +80,14 @@ void METHOD(delete)(NAME* self) {
 
 void METHOD(set)(NAME* self, K key, V* value) {
     uint64_t hash_value = hash(key);
-    int index = (uint16_t)(hash_value & 0xFFFF);
-    while(self->indices[index] != 0xFFFF) {
+    int index = (uint16_t)(hash_value & (FIXED_HASH_SIZE - 1));
+    while(self->indices[index] != (FIXED_HASH_SIZE - 1)) {
         KV* entry = c11_chunkedvector__at(&self->entries, self->indices[index]);
         if(equal(entry->key, key)) {
             entry->val = *value;
             return;
         }
-        index = ((5 * index) + 1) & 0xFFFF;
+        index = ((5 * index) + 1) & (FIXED_HASH_SIZE - 1);
     }
     if(self->length >= 65000) abort();
     KV* kv = c11_chunkedvector__emplace(&self->entries);
@@ -96,11 +100,11 @@ void METHOD(set)(NAME* self, K key, V* value) {
 
 V* METHOD(try_get)(NAME* self, K key) {
     uint64_t hash_value = hash(key);
-    int index = (uint16_t)(hash_value & 0xFFFF);
-    while(self->indices[index] != 0xFFFF) {
+    int index = (uint16_t)(hash_value & (FIXED_HASH_SIZE - 1));
+    while(self->indices[index] != (FIXED_HASH_SIZE - 1)) {
         KV* entry = c11_chunkedvector__at(&self->entries, self->indices[index]);
         if(equal(entry->key, key)) return &entry->val;
-        index = ((5 * index) + 1) & 0xFFFF;
+        index = ((5 * index) + 1) & (FIXED_HASH_SIZE - 1);
     }
     return NULL;
 }
