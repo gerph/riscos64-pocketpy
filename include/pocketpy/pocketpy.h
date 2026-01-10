@@ -28,6 +28,7 @@ typedef double py_f64;
 /// A generic destructor function.
 typedef void (*py_Dtor)(void*);
 
+#ifndef PK_IS_AMALGAMATED_C
 #ifdef PK_IS_PUBLIC_INCLUDE
 typedef struct py_TValue {
     py_Type type;
@@ -40,6 +41,7 @@ typedef struct py_TValue {
     };
 } py_TValue;
 #endif
+#endif
 
 /// A string view type. It is helpful for passing strings which are not null-terminated.
 typedef struct c11_sv {
@@ -49,6 +51,7 @@ typedef struct c11_sv {
 
 #define PY_RAISE
 #define PY_RETURN
+#define PY_MAYBENULL
 
 /// A generic reference to a python object.
 typedef py_TValue* py_Ref;
@@ -76,10 +79,10 @@ typedef void (*py_TraceFunc)(py_Frame* frame, enum py_TraceEvent);
 
 /// A struct contains the callbacks of the VM.
 typedef struct py_Callbacks {
-    /// Used by `__import__` to load a source module.
-    char* (*importfile)(const char*);
+    /// Used by `__import__` to load a source or compiled module.
+    char* (*importfile)(const char* path, int* data_size);
     /// Called before `importfile` to lazy-import a C module.
-    py_GlobalRef (*lazyimport)(const char*);
+    PY_MAYBENULL py_GlobalRef (*lazyimport)(const char*);
     /// Used by `print` to output a string.
     void (*print)(const char*);
     /// Flush the output buffer of `print`.
@@ -87,8 +90,16 @@ typedef struct py_Callbacks {
     /// Used by `input` to get a character.
     int (*getchr)();
     /// Used by `gc.collect()` to mark extra objects for garbage collection.
-    void (*gc_mark)(void (*f)(py_Ref val, void* ctx), void* ctx);
+    PY_MAYBENULL void (*gc_mark)(void (*f)(py_Ref val, void* ctx), void* ctx);
+    /// Used by `PRINT_EXPR` bytecode.
+    PY_MAYBENULL bool (*displayhook)(py_Ref val) PY_RAISE;
 } py_Callbacks;
+
+/// A struct contains the application-level callbacks.
+typedef struct py_AppCallbacks {
+    void (*on_vm_ctor)(int index);
+    void (*on_vm_dtor)(int index);
+} py_AppCallbacks;
 
 /// Native function signature.
 /// @param argc number of arguments.
@@ -125,6 +136,8 @@ PK_API void* py_getvmctx();
 PK_API void py_setvmctx(void* ctx);
 /// Setup the callbacks for the current VM.
 PK_API py_Callbacks* py_callbacks();
+/// Setup the application callbacks
+PK_API py_AppCallbacks* py_appcallbacks();
 
 /// Set `sys.argv`. Used for storing command-line arguments.
 PK_API void py_sys_setargv(int argc, char** argv);
@@ -169,6 +182,11 @@ PK_API bool py_compile(const char* source,
                        const char* filename,
                        enum py_CompileMode mode,
                        bool is_dynamic) PY_RAISE PY_RETURN;
+/// Compile a `.py` file into a `.pyc` file.
+PK_API bool py_compilefile(const char* src_path,
+                           const char* dst_path) PY_RAISE;
+/// Run a compiled code object.
+PK_API bool py_execo(const void* data, int size, const char* filename, py_Ref module) PY_RAISE PY_RETURN;
 /// Run a source string.
 /// @param source source string.
 /// @param filename filename (for error messages).
@@ -287,10 +305,6 @@ PK_API void
     py_bindproperty(py_Type type, const char* name, py_CFunction getter, py_CFunction setter);
 /// Bind a magic method to type.
 PK_API void py_bindmagic(py_Type type, py_Name name, py_CFunction f);
-/// Bind a compile-time function via "decl-based" style.
-PK_API void py_macrobind(const char* sig, py_CFunction f);
-/// Get a compile-time function by name.
-PK_API py_ItemRef py_macroget(py_Name name);
 
 /************* Value Cast *************/
 
@@ -426,6 +440,13 @@ PK_API py_GlobalRef py_retval();
 #define py_r5() py_getreg(5)
 #define py_r6() py_getreg(6)
 #define py_r7() py_getreg(7)
+
+#define py_tmpr0() py_getreg(8)
+#define py_tmpr1() py_getreg(9)
+#define py_tmpr2() py_getreg(10)
+#define py_tmpr3() py_getreg(11)
+#define py_sysr0() py_getreg(12)    // for debugger
+#define py_sysr1() py_getreg(13)    // for pybind11
 
 /// Get an item from the object's `__dict__`.
 /// Return `NULL` if not found.
@@ -659,12 +680,12 @@ PK_API bool StopIteration() PY_RAISE;
 
 #if PK_ENABLE_OS
 PK_API void py_debugger_waitforattach(const char* hostname, unsigned short port);
-PK_API bool py_debugger_isattached();
+PK_API int py_debugger_status();
 PK_API void py_debugger_exceptionbreakpoint(py_Ref exc);
 PK_API void py_debugger_exit(int code);
 #else
 #define py_debugger_waitforattach(hostname, port)
-#define py_debugger_isattached() (false)
+#define py_debugger_status() 0
 #define py_debugger_exceptionbreakpoint(exc)
 #define py_debugger_exit(code)
 #endif
@@ -790,6 +811,8 @@ PK_API void py_profiler_reset();
 PK_API char* py_profiler_report();
 
 /************* Others *************/
+int64_t time_ns();
+int64_t time_monotonic_ns();
 
 /// An utility function to read a line from stdin for REPL.
 PK_API int py_replinput(char* buf, int max_size);
@@ -863,6 +886,16 @@ enum py_PredefinedType {
     tp_ImportError,
     tp_AssertionError,
     tp_KeyError,
+    /* stdc */
+    tp_stdc_Memory,
+    tp_stdc_Char, tp_stdc_UChar,
+    tp_stdc_Short, tp_stdc_UShort,
+    tp_stdc_Int, tp_stdc_UInt,
+    tp_stdc_Long, tp_stdc_ULong,
+    tp_stdc_LongLong, tp_stdc_ULongLong,
+    tp_stdc_Float, tp_stdc_Double,
+    tp_stdc_Pointer,
+    tp_stdc_Bool,
     /* vmath */
     tp_vec2,
     tp_vec3,

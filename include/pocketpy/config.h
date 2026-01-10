@@ -1,10 +1,10 @@
 #pragma once
 // clang-format off
 
-#define PK_VERSION				"2.1.2"
+#define PK_VERSION				"2.1.7"
 #define PK_VERSION_MAJOR            2
 #define PK_VERSION_MINOR            1
-#define PK_VERSION_PATCH            2
+#define PK_VERSION_PATCH            7
 
 /*************** feature settings ***************/
 #ifndef PK_ENABLE_OS                // can be overridden by cmake
@@ -33,7 +33,7 @@
 
 // GC min threshold
 #ifndef PK_GC_MIN_THRESHOLD         // can be overridden by cmake
-    #define PK_GC_MIN_THRESHOLD     32768
+    #define PK_GC_MIN_THRESHOLD     20000
 #endif
 
 // This is the maximum size of the value stack in py_TValue units

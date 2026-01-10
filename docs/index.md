@@ -15,6 +15,7 @@ Developers are able to write Python bindings via C-API or pybind11 compatible in
 + [Godot Extension](https://github.com/pocketpy/godot-pocketpy): Use pocketpy in Godot Engine
 + [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=pocketpy.pocketpy): Debug and profile pocketpy scripts in VSCode
 + [Flutter Plugin](https://pub.dev/packages/pocketpy): Use pocketpy in Flutter apps
++ [Raylib Bindings](https://github.com/pocketpy/raylib-bindings): Use raylib with pocketpy
 
 ## What it looks like
 
@@ -44,6 +45,9 @@ These platforms are officially tested.
 + iOS 64-bit
 + Emscripten 32-bit
 + Raspberry Pi OS 64-bit
++ [Luckfox Pico SDK](https://github.com/LuckfoxTECH/luckfox-pico) 32-bit
+
+On Windows platform, only MSVC compiler is officially supported.
 
 ## Star the repo
 

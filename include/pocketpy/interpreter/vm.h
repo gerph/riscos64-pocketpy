@@ -58,11 +58,10 @@ typedef struct VM {
     int recursion_depth;
     int max_recursion_depth;
 
-    py_TValue reg[8];  // users' registers
-    void* ctx;         // user-defined context
+    py_TValue reg[14];  // users' registers
+    void* ctx;          // user-defined context
 
     CachedNames cached_names;
-    NameDict compile_time_funcs;
 
     py_StackRef curr_class;
     py_StackRef curr_decl_based_function;   // this is for get current function without frame
@@ -78,6 +77,7 @@ typedef struct VM {
 
 void VM__ctor(VM* self);
 void VM__dtor(VM* self);
+int VM__index(VM* self);
 
 void VM__push_frame(VM* self, py_Frame* frame);
 void VM__pop_frame(VM* self);

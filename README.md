@@ -36,6 +36,7 @@ Please see https://pocketpy.dev for details and try the following resources.
 + [Godot Extension](https://github.com/pocketpy/godot-pocketpy): Use pocketpy in Godot Engine
 + [VSCode Extension](https://marketplace.visualstudio.com/items?itemName=pocketpy.pocketpy): Debug and profile pocketpy scripts in VSCode
 + [Flutter Plugin](https://pub.dev/packages/pocketpy): Use pocketpy in Flutter apps
++ [Raylib Bindings](https://github.com/pocketpy/raylib-bindings): Use raylib with pocketpy
 
 ## Supported Platforms
 
@@ -49,17 +50,15 @@ These platforms are officially tested.
 + iOS 64-bit
 + Emscripten 32-bit
 + Raspberry Pi OS 64-bit
++ [Luckfox Pico SDK](https://github.com/LuckfoxTECH/luckfox-pico) 32-bit
+
+On Windows platform, only MSVC compiler is officially supported.
 
 ## Quick Start
 
 You have two options to integrate pkpy into your project.
 
-#### Use the single header file
-
-Download the `pocketpy.h` and `pocketpy.c` on our [GitHub Release](https://github.com/pocketpy/pocketpy/releases) page.
-And `#include` it in your project.
-
-#### Use CMake
+#### Use CMake (Recommended)
 
 Clone the whole repository as a submodule into your project,
 In your CMakelists.txt, add the following lines:
@@ -72,6 +71,11 @@ target_link_libraries(<your_target> pocketpy)
 See [CMakeLists.txt](https://github.com/pocketpy/pocketpy/blob/main/CMakeLists.txt) for details.
 
 It is safe to use `main` branch in production if CI badge is green.
+
+#### Use the single header file
+
+Download the `pocketpy.h` and `pocketpy.c` on our [GitHub Release](https://github.com/pocketpy/pocketpy/releases) page.
+And `#include` it in your project.
 
 ### Compile Flags
 
@@ -108,7 +112,7 @@ int main() {
     if(!ok) goto __ERROR;
 
     // Create a list: [1, 2, 3]
-    py_Ref r0 = py_getreg(0);
+    py_Ref r0 = py_tmpr0();
     py_newlistn(r0, 3);
     py_newint(py_list_getitem(r0, 0), 1);
     py_newint(py_list_getitem(r0, 1), 2);

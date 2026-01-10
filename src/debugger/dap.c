@@ -28,7 +28,8 @@
 
 #define DECLARE_HANDLE_FN(name) void c11_dap_handle_##name(py_Ref arguments, c11_sbuf*);
 DAP_COMMAND_LIST(DECLARE_HANDLE_FN)
-#undef DECLARE_ARG_FN
+#undef DECLARE_HANDLE_FN
+
 
 typedef void (*c11_dap_arg_parser_fn)(py_Ref, c11_sbuf*);
 
@@ -43,6 +44,7 @@ static dap_command_entry dap_command_table[] = {
 };
 
 #undef DAP_ENTRY
+#undef DAP_COMMAND_LIST
 
 static struct c11_dap_server {
     int dap_next_seq;
@@ -53,7 +55,8 @@ static struct c11_dap_server {
     c11_socket_handler toclient;
     bool isconfiguredone;
     bool isfirstatttach;
-    bool isattach;
+    bool isUserCode;
+    bool isAttached;
     bool isclientready;
 } server;
 
@@ -128,12 +131,11 @@ void c11_dap_handle_setBreakpoints(py_Ref arguments, c11_sbuf* buffer) {
     PK_FREE((void*)sourcename);
 }
 
-inline static void c11_dap_build_ExceptionInfo(const char* exc_type, const char* exc_message, c11_sbuf* buffer) {
+static void c11_dap_build_ExceptionInfo(const char* exc_type, const char* exc_message, c11_sbuf* buffer) {
     const char* safe_type = exc_type ? exc_type : "UnknownException";
     const char* safe_message = exc_message ? exc_message : "No additional details available";
 
     c11_sv type_sv = {.data = safe_type, .size = strlen(safe_type)};
-    c11_sv message_sv = {.data = safe_message, .size = strlen(safe_message)};
 
     c11_sbuf combined_buffer;
     c11_sbuf__ctor(&combined_buffer);
@@ -441,7 +443,8 @@ void c11_dap_init_server(const char* hostname, unsigned short port) {
     server.isconfiguredone = false;
     server.isclientready = false;
     server.isfirstatttach = false;
-    server.isattach = false;
+    server.isUserCode = false;
+    server.isAttached = false;
     server.buffer_begin = server.buffer_data;
     server.server = c11_socket_create(C11_AF_INET, C11_SOCK_STREAM, 0);
     c11_socket_bind(server.server, hostname, port);
@@ -480,7 +483,8 @@ void c11_dap_configure_debugger() {
         if(server.isfirstatttach) {
             c11_dap_send_initialized_event();
             server.isfirstatttach = false;
-            server.isattach = true;
+            server.isAttached = true;
+            server.isUserCode = true;
         } else if(server.isclientready) {
             server.isclientready = false;
             return;
@@ -491,7 +495,7 @@ void c11_dap_configure_debugger() {
 
 void c11_dap_tracefunc(py_Frame* frame, enum py_TraceEvent event) {
     py_sys_settrace(NULL, false);
-    server.isattach = false;
+    server.isUserCode = false;
     C11_DEBUGGER_STATUS result = c11_debugger_on_trace(frame, event);
     if(result == C11_DEBUGGER_EXIT) {
         // c11_dap_send_output_event("console", "[DEBUGGER INFO] : program exit\n");
@@ -515,14 +519,14 @@ void c11_dap_tracefunc(py_Frame* frame, enum py_TraceEvent event) {
     C11_STOP_REASON reason = c11_debugger_should_pause();
     if(reason == C11_DEBUGGER_NOSTOP) {
         py_sys_settrace(c11_dap_tracefunc, false);
-        server.isattach = true;
+        server.isUserCode = true;
         return;
     }
     c11_dap_send_stop_event(reason);
     while(c11_debugger_should_keep_pause()) {
         c11_dap_handle_message();
     }
-    server.isattach = true;
+    server.isUserCode = true;
     py_sys_settrace(c11_dap_tracefunc, false);
 }
 
@@ -543,13 +547,18 @@ void py_debugger_waitforattach(const char* hostname, unsigned short port) {
 
 void py_debugger_exit(int exitCode) { c11_dap_send_exited_event(exitCode); }
 
-bool py_debugger_isattached() { return server.isattach; }
+int py_debugger_status() { 
+    if(!server.isAttached) {
+        return 0;
+    }
+    return server.isUserCode ? 1 : 2;
+ }
 
 void py_debugger_exceptionbreakpoint(py_Ref exc) {
     assert(py_isinstance(exc, tp_BaseException));
 
     py_sys_settrace(NULL, true);
-    server.isattach = false;
+    server.isUserCode = false;
 
     c11_debugger_exception_on_trace(exc);
     for(;;) {

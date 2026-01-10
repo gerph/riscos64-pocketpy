@@ -50,6 +50,7 @@ OBJS       = \
 		o.chunkedvector \
 		o.memorypool \
 		o.name \
+		o.serialize \
 		o.smallmap \
 		o.socket \
 		o.sourcedata \
@@ -65,6 +66,7 @@ OBJS       = \
 		o.ceval \
 		o.dll \
 		o.frame \
+		o.py_compile \
 		o.generator \
 		o.heap \
 		o.line_profiler \
@@ -88,14 +90,17 @@ OBJS       = \
 		o.math \
 		o.os \
 		o.pickle \
+		o.picoterm \
 		o.pkpy \
 		o.random \
+		o.stdc \
 		o.time \
 		o.traceback \
 		o.unicodedata \
 		o.vmath \
 		o.bintree \
 		o.codeobject \
+		o.codeobject_ser \
 		o.container \
 		o.namedict \
 		o.object \

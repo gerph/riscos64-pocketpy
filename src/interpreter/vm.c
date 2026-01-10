@@ -12,7 +12,7 @@
 #include <stdbool.h>
 #include <assert.h>
 
-static char* pk_default_importfile(const char* path) {
+static char* pk_default_importfile(const char* path, int* data_size) {
 #if PK_ENABLE_OS
     FILE* f = fopen(path, "rb");
     if(f == NULL) return NULL;
@@ -23,6 +23,7 @@ static char* pk_default_importfile(const char* path) {
     size = fread(buffer, 1, size, f);
     buffer[size] = 0;
     fclose(f);
+    if(data_size) *data_size = (int)size;
     return buffer;
 #else
     return NULL;
@@ -98,6 +99,8 @@ void VM__ctor(VM* self) {
     self->recursion_depth = 0;
     self->max_recursion_depth = 1000;
 
+    memset(self->reg, 0, sizeof(self->reg));
+
     self->ctx = NULL;
     self->curr_class = NULL;
     self->curr_decl_based_function = NULL;
@@ -112,7 +115,6 @@ void VM__ctor(VM* self) {
     self->stack.end = self->stack.begin + PK_VM_STACK_SIZE;
 
     CachedNames__ctor(&self->cached_names);
-    NameDict__ctor(&self->compile_time_funcs, PK_TYPE_ATTR_LOAD_FACTOR);
 
     /* Init Builtin Types */
     // 0: unused
@@ -237,6 +239,7 @@ void VM__ctor(VM* self) {
 
     py_newnotimplemented(py_emplacedict(self->builtins, py_name("NotImplemented")));
 
+    pk__add_module_stdc();
     pk__add_module_vmath();
     pk__add_module_array2d();
     pk__add_module_colorcvt();
@@ -262,9 +265,11 @@ void VM__ctor(VM* self) {
 
     pk__add_module_conio();
     pk__add_module_lz4();       // optional
-    pk__add_module_libhv();     // optional
     pk__add_module_cute_png();  // optional
+    pk__add_module_msgpack();   // optional
+    py__add_module_periphery(); // optional
     pk__add_module_pkpy();
+    pk__add_module_picoterm();
 
     // add python builtins
     do {
@@ -278,9 +283,19 @@ void VM__ctor(VM* self) {
     } while(0);
 
     self->main = py_newmodule("__main__");
+
+    if(py_appcallbacks()->on_vm_ctor) {
+        int index = VM__index(self);
+        py_appcallbacks()->on_vm_ctor(index);
+    }
 }
 
 void VM__dtor(VM* self) {
+    if(py_appcallbacks()->on_vm_dtor) {
+        int index = VM__index(self);
+        py_appcallbacks()->on_vm_dtor(index);
+    }
+
     // reset traceinfo
     py_sys_settrace(NULL, true);
     LineProfiler__dtor(&self->line_profiler);
@@ -293,7 +308,6 @@ void VM__dtor(VM* self) {
     BinTree__dtor(&self->modules);
     FixedMemoryPool__dtor(&self->pool_frame);
     CachedNames__dtor(&self->cached_names);
-    NameDict__dtor(&self->compile_time_funcs);
     c11_vector__dtor(&self->types);
 }
 
@@ -569,6 +583,7 @@ FrameResult VM__vectorcall(VM* self, uint16_t argc, uint16_t kwargc, bool opcall
         // [cls, NULL, args..., kwargs...]
         py_Ref new_f = py_tpfindmagic(py_totype(p0), __new__);
         assert(new_f && py_isnil(p0 + 1));
+        bool is_default_new = new_f->type == tp_nativefunc && new_f->_cfunc == pk__object_new;
 
         // prepare a copy of args and kwargs
         int span = self->stack.sp - argv;
@@ -592,6 +607,13 @@ FrameResult VM__vectorcall(VM* self, uint16_t argc, uint16_t kwargc, bool opcall
             // [__init__, self, args..., kwargs...]
             if(VM__vectorcall(self, argc, kwargc, false) == RES_ERROR) return RES_ERROR;
             *py_retval() = p0[1];  // restore the new instance
+        } else {
+            if(is_default_new) {
+                if(argc != 0 || kwargc != 0) {
+                    TypeError("%t() takes no arguments", py_totype(p0));
+                    return RES_ERROR;
+                }
+            }
         }
         // reset the stack
         self->stack.sp = p0;
@@ -650,12 +672,6 @@ void ManagedHeap__mark(ManagedHeap* self) {
         CachedNames_KV* kv = c11_chunkedvector__at(&vm->cached_names.entries, i);
         pk__mark_value(&kv->val);
     }
-    // mark compile time functions
-    for(int i = 0; i < vm->compile_time_funcs.capacity; i++) {
-        NameDict_KV* kv = &vm->compile_time_funcs.items[i];
-        if(kv->key == NULL) continue;
-        pk__mark_value(&kv->value);
-    }
     // mark types
     int types_length = vm->types.length;
     // 0-th type is placeholder
@@ -674,6 +690,8 @@ void ManagedHeap__mark(ManagedHeap* self) {
     for(int i = 0; i < c11__count_array(vm->reg); i++) {
         pk__mark_value(&vm->reg[i]);
     }
+    // mark gc debug callback
+    pk__mark_value(&vm->heap.debug_callback);
     // mark user func
     if(vm->callbacks.gc_mark) vm->callbacks.gc_mark(pk__mark_value_func, p_stack);
     /*****************************/

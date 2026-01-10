@@ -67,7 +67,10 @@ int load_module_from_dll_desktop_only(const char* path) PY_RAISE PY_RETURN;
 int py_import(const char* path_cstr) {
     VM* vm = pk_current_vm;
     c11_sv path = {path_cstr, strlen(path_cstr)};
-    if(path.size == 0) return ValueError("empty module name");
+    if(path.size == 0) {
+        ValueError("empty module name");
+        return -1;
+    }
 
     if(path.data[0] == '.') {
         // try relative import
@@ -75,19 +78,24 @@ int py_import(const char* path_cstr) {
         while(dot_count < path.size && path.data[dot_count] == '.')
             dot_count++;
 
-        c11_sv top_filename = c11_string__sv(vm->top_frame->co->src->filename);
-        int is_init = c11_sv__endswith(top_filename, (c11_sv){"__init__.py", 11});
+        // */__init__.py[c]
+        c11_sv top_filepath = c11_string__sv(vm->top_frame->co->src->filename);
+        c11_sv top_filename = c11_sv__filename(top_filepath);
+        int is_init = c11__sveq2(top_filename, "__init__.py") || c11__sveq2(top_filename, "__init__.pyc");
 
         py_ModuleInfo* mi = py_touserdata(vm->top_frame->module);
         c11_sv package_sv = c11_string__sv(mi->path);
         if(package_sv.size == 0) {
-            return ImportError("attempted relative import with no known parent package");
+            ImportError("attempted relative import with no known parent package");
+            return -1;
         }
 
         c11_vector /* T=c11_sv */ cpnts = c11_sv__split(package_sv, '.');
         for(int i = is_init; i < dot_count; i++) {
-            if(cpnts.length == 0)
-                return ImportError("attempted relative import beyond top-level package");
+            if(cpnts.length == 0){
+                ImportError("attempted relative import beyond top-level package");
+                return -1;
+            }
             c11_vector__pop(&cpnts);
         }
 
@@ -117,7 +125,7 @@ int py_import(const char* path_cstr) {
     py_GlobalRef ext_mod = py_getmodule(path.data);
     if(ext_mod) {
         py_assign(py_retval(), ext_mod);
-        return true;
+        return 1;
     }
 
     if(vm->callbacks.lazyimport) {
@@ -134,19 +142,38 @@ int py_import(const char* path_cstr) {
     c11_string* filename = c11_string__new3("%s.py", slashed_path->data);
 
     bool need_free = true;
+    bool is_pyc = false;
     const char* data = load_kPythonLib(path_cstr);
+    int data_size = -1;
+
     if(data != NULL) {
         need_free = false;
         goto __SUCCESS;
     }
 
-    data = vm->callbacks.importfile(filename->data);
+    data = vm->callbacks.importfile(filename->data, &data_size);
     if(data != NULL) goto __SUCCESS;
 
     c11_string__delete(filename);
+    filename = c11_string__new3("%s.pyc", slashed_path->data);
+    data = vm->callbacks.importfile(filename->data, &data_size);
+    if(data != NULL) {
+        is_pyc = true;
+        goto __SUCCESS;
+    }
+
+    c11_string__delete(filename);
     filename = c11_string__new3("%s%c__init__.py", slashed_path->data, PK_PLATFORM_SEP);
-    data = vm->callbacks.importfile(filename->data);
+    data = vm->callbacks.importfile(filename->data, &data_size);
     if(data != NULL) goto __SUCCESS;
+
+    c11_string__delete(filename);
+    filename = c11_string__new3("%s%c__init__.pyc", slashed_path->data, PK_PLATFORM_SEP);
+    data = vm->callbacks.importfile(filename->data, &data_size);
+    if(data != NULL) {
+        is_pyc = true;
+        goto __SUCCESS;
+    }
 
     c11_string__delete(filename);
     c11_string__delete(slashed_path);
@@ -156,8 +183,15 @@ int py_import(const char* path_cstr) {
 __SUCCESS:
     do {
     } while(0);
+    
     py_GlobalRef mod = py_newmodule(path_cstr);
-    bool ok = py_exec((const char*)data, filename->data, EXEC_MODE, mod);
+
+    bool ok;
+    if(is_pyc) {
+        ok = py_execo(data, data_size, filename->data, mod);
+    } else {
+        ok = py_exec(data, filename->data, EXEC_MODE, mod);
+    }
     py_assign(py_retval(), mod);
 
     c11_string__delete(filename);
@@ -174,11 +208,13 @@ bool py_importlib_reload(py_Ref module) {
     c11_sv path = c11_string__sv(mi->path);
     c11_string* slashed_path = c11_sv__replace(path, '.', PK_PLATFORM_SEP);
     c11_string* filename = c11_string__new3("%s.py", slashed_path->data);
-    char* data = vm->callbacks.importfile(filename->data);
+    // Here we only consider source modules.
+    // Because compiled modules have no source file (it cannot be reloaded)
+    char* data = vm->callbacks.importfile(filename->data, NULL);
     if(data == NULL) {
         c11_string__delete(filename);
         filename = c11_string__new3("%s%c__init__.py", slashed_path->data, PK_PLATFORM_SEP);
-        data = vm->callbacks.importfile(filename->data);
+        data = vm->callbacks.importfile(filename->data, NULL);
     }
     c11_string__delete(slashed_path);
     if(data == NULL) return ImportError("module '%v' not found", path);

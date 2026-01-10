@@ -167,8 +167,26 @@ static bool list__setitem__(int argc, py_Ref argv) {
 
 static bool list__delitem__(int argc, py_Ref argv) {
     PY_CHECK_ARGC(2);
-    PY_CHECK_ARG_TYPE(1, tp_int);
     List* self = py_touserdata(py_arg(0));
+
+    if(py_istype(py_arg(1), tp_slice)) {
+        int start, stop, step;
+        bool ok = pk__parse_int_slice(py_arg(1), self->length, &start, &stop, &step);
+        if(!ok) return false;
+        if(step != 1) return ValueError("slice step must be 1 for deletion");
+        int n = stop - start;
+        if(n > 0) {
+            py_TValue* p = self->data;
+            for(int i = stop; i < self->length; i++) {
+                p[start + i - stop] = p[i];
+            }
+            self->length -= n;
+        }
+        py_newnone(py_retval());
+        return true;
+    }
+
+    PY_CHECK_ARG_TYPE(1, tp_int);
     int index = py_toint(py_arg(1));
     if(!pk__normalize_index(&index, self->length)) return false;
     c11_vector__erase(py_TValue, self, index);
@@ -185,8 +203,8 @@ static bool list__add__(int argc, py_Ref argv) {
         List* list_1 = py_touserdata(_1);
         py_newlist(py_retval());
         List* list = py_touserdata(py_retval());
-        c11_vector__extend(py_TValue, list, list_0->data, list_0->length);
-        c11_vector__extend(py_TValue, list, list_1->data, list_1->length);
+        c11_vector__extend(list, list_0->data, list_0->length);
+        c11_vector__extend(list, list_1->data, list_1->length);
     } else {
         py_newnotimplemented(py_retval());
     }
@@ -203,7 +221,7 @@ static bool list__mul__(int argc, py_Ref argv) {
         List* list = py_touserdata(py_retval());
         List* list_0 = py_touserdata(_0);
         for(int i = 0; i < n; i++) {
-            c11_vector__extend(py_TValue, list, list_0->data, list_0->length);
+            c11_vector__extend(list, list_0->data, list_0->length);
         }
     } else {
         py_newnotimplemented(py_retval());
@@ -246,7 +264,7 @@ static bool list_extend(int argc, py_Ref argv) {
     py_TValue* p;
     int length = pk_arrayview(py_arg(1), &p);
     if(length == -1) return TypeError("extend() argument must be a list or tuple");
-    c11_vector__extend(py_TValue, self, p, length);
+    c11_vector__extend(self, p, length);
     py_newnone(py_retval());
     return true;
 }
@@ -275,7 +293,7 @@ static bool list_copy(int argc, py_Ref argv) {
     py_newlist(py_retval());
     List* self = py_touserdata(py_arg(0));
     List* list = py_touserdata(py_retval());
-    c11_vector__extend(py_TValue, list, self->data, self->length);
+    c11_vector__extend(list, self->data, self->length);
     return true;
 }
 

@@ -116,8 +116,7 @@ __NEXT_STEP:
 
 #if PK_ENABLE_WATCHDOG
     if(self->watchdog_info.max_reset_time > 0) {
-        clock_t now = clock();
-        if(now > self->watchdog_info.max_reset_time) {
+        if(py_debugger_status() == 0 && clock() > self->watchdog_info.max_reset_time) {
             self->watchdog_info.max_reset_time = 0;
             TimeoutError("watchdog timeout");
             goto __ERROR;
@@ -153,15 +152,21 @@ __NEXT_STEP:
             *THIRD() = tmp;
             DISPATCH();
         }
-        case OP_PRINT_EXPR:
-            if(TOP()->type != tp_NoneType) {
-                bool ok = py_repr(TOP());
+        case OP_PRINT_EXPR: {
+            if(self->callbacks.displayhook) {
+                bool ok = self->callbacks.displayhook(TOP());
                 if(!ok) goto __ERROR;
-                self->callbacks.print(py_tostr(&self->last_retval));
-                self->callbacks.print("\n");
+            } else {
+                if(TOP()->type != tp_NoneType) {
+                    bool ok = py_repr(TOP());
+                    if(!ok) goto __ERROR;
+                    self->callbacks.print(py_tostr(&self->last_retval));
+                    self->callbacks.print("\n");
+                }
             }
             POP();
             DISPATCH();
+        }
         /*****************************************/
         case OP_LOAD_CONST: {
             PUSH(c11__at(py_TValue, &frame->co->consts, byte.arg));
@@ -184,6 +189,11 @@ __NEXT_STEP:
             py_newint(SP()++, (int16_t)byte.arg);
             DISPATCH();
         }
+        case OP_LOAD_NAME_AS_INT: {
+            py_Name name = co_names[byte.arg];
+            py_newint(SP()++, (uintptr_t)name);
+            DISPATCH();
+        }
         /*****************************************/
         case OP_LOAD_ELLIPSIS: {
             py_newellipsis(SP()++);
@@ -202,6 +212,8 @@ __NEXT_STEP:
                 py_Name name = py_name(decl->code.name->data);
                 // capture itself to allow recursion
                 NameDict__set(ud->closure, name, SP());
+            } else {
+                if(self->curr_class) ud->clazz = self->curr_class->_obj;
             }
             SP()++;
             DISPATCH();
@@ -722,7 +734,7 @@ __NEXT_STEP:
         }
         /*****************************************/
         case OP_CALL: {
-            ManagedHeap__collect_if_needed(&self->heap);
+            if(self->heap.gc_enabled) ManagedHeap__collect_hint(&self->heap);
             vectorcall_opcall(byte.arg & 0xFF, byte.arg >> 8);
             DISPATCH();
         }
@@ -1083,12 +1095,6 @@ __NEXT_STEP:
             assert(self->curr_class);
             py_Name name = co_names[byte.arg];
             // TOP() can be a function, classmethod or custom decorator
-            py_Ref actual_func = TOP();
-            if(actual_func->type == tp_classmethod) { actual_func = py_getslot(actual_func, 0); }
-            if(actual_func->type == tp_function) {
-                Function* ud = py_touserdata(actual_func);
-                ud->clazz = self->curr_class->_obj;
-            }
             py_setdict(self->curr_class, name, TOP());
             POP();
             DISPATCH();
@@ -1444,7 +1450,6 @@ bool pk_format_object(VM* self, py_Ref val, c11_sv spec) {
     return true;
 }
 
-#undef CHECK_RETURN_FROM_EXCEPT_OR_FINALLY
 #undef DISPATCH
 #undef DISPATCH_JUMP
 #undef DISPATCH_JUMP_ABSOLUTE
