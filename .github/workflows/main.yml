@@ -39,7 +39,7 @@ jobs:
         python cmake_build.py Release -DPK_BUILD_MODULE_LZ4=ON -DPK_BUILD_MODULE_CUTE_PNG=ON -DPK_BUILD_MODULE_MSGPACK=ON
         cp main.exe output/x86_64
         cp pocketpy.dll output/x86_64
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       with:
         name: windows
         path: output
@@ -86,7 +86,7 @@ jobs:
         cp libpocketpy.so output/x86_64
       env:
         CC: clang
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v6
       with:
         name: linux
         path: output
@@ -133,7 +133,7 @@ jobs:
           cp build/android/x86_64/libpocketpy.so output/x86_64
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: android
           path: output
@@ -148,7 +148,7 @@ jobs:
           bash build_darwin_libs.sh
           mkdir -p output
           cp build/libpocketpy.a output/libpocketpy.a
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: darwin
           path: output
@@ -163,7 +163,7 @@ jobs:
           bash build_ios_libs.sh
           mkdir -p output
           cp -r build/pocketpy.xcframework output/pocketpy.xcframework
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ios
           path: output
@@ -229,7 +229,7 @@ jobs:
           path: $GITHUB_WORKSPACE/output/ios
 
       - name: "Upload merged artifact"
-        uses: actions/upload-artifact@v4.3.3
+        uses: actions/upload-artifact@v6.0.0
         with:
           name: all-in-one
           path: $GITHUB_WORKSPACE/output
