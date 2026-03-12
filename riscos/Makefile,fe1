@@ -48,6 +48,7 @@ OBJS       = \
 		o.py_str \
 		o.algorithm \
 		o.chunkedvector \
+		o.dmath \
 		o.memorypool \
 		o.name \
 		o.serialize \
