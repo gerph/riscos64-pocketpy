@@ -1,10 +1,10 @@
 #pragma once
 // clang-format off
 
-#define PK_VERSION				"2.1.7"
+#define PK_VERSION				"2.1.8"
 #define PK_VERSION_MAJOR            2
 #define PK_VERSION_MINOR            1
-#define PK_VERSION_PATCH            7
+#define PK_VERSION_PATCH            8
 
 /*************** feature settings ***************/
 #ifndef PK_ENABLE_OS                // can be overridden by cmake
@@ -58,12 +58,6 @@
 /*************** internal settings ***************/
 // This is the maximum character length of a module path
 #define PK_MAX_MODULE_PATH_LEN      63
-
-// This is some math constants
-#define PK_M_PI                     3.1415926535897932384
-#define PK_M_E                      2.7182818284590452354
-#define PK_M_DEG2RAD                0.017453292519943295
-#define PK_M_RAD2DEG                57.29577951308232
 
 // Hash table load factor (smaller ones mean less collision but more memory)
 // For class instance

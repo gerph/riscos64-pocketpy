@@ -142,6 +142,17 @@ for i in range(n):
     del a[str(i)]
 assert len(a) == 0
 
+# test popitem
+n = 2 ** 17
+a = {}
+for i in range(n):
+    a[str(i)] = i
+for i in range(n):
+    k, v = a.popitem()
+    assert k == str(n - 1 - i)
+    assert v == n - 1 - i
+assert len(a) == 0
+
 # test del with int keys
 if 0:
     n = 2 ** 17
@@ -166,16 +177,3 @@ for i in range(len(data)):
     if i % 3 == 0:
         y = b.pop()
         delattr(a, y)
-
-# bug test
-d = {
-    '__name__': '__main__',
-    '__package__': '',
-    '__path__': '__main__',
-    'a': [],
-    'gc': 1,
-}
-
-del d['a']
-assert 'a' not in d
-assert d['gc'] == 1

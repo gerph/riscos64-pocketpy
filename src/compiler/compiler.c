@@ -2301,6 +2301,9 @@ static Error* _compile_f_args(Compiler* self, FuncDecl* decl, bool is_lambda) {
     int state = 0;  // 0 for args, 1 for *args, 2 for k=v, 3 for **kwargs
     Error* err;
     do {
+        // allow trailing comma
+        if(!is_lambda && curr()->type == TK_RPAREN) break;
+
         if(state >= 3) return SyntaxError(self, "**kwargs should be the last argument");
         if(match(TK_MUL)) {
             if(state < 1)
@@ -2462,17 +2465,50 @@ static Error* compile_decorated(Compiler* self) {
 
 // import a [as b]
 // import a [as b], c [as d]
-static Error* compile_normal_import(Compiler* self) {
+static Error* compile_normal_import(Compiler* self, c11_sbuf* buf) {
     do {
         consume(TK_ID);
         c11_sv name = Token__sv(prev());
-        int index = Ctx__add_const_string(ctx(), name);
-        Ctx__emit_(ctx(), OP_IMPORT_PATH, index, prev()->line);
-        if(match(TK_AS)) {
+        c11_sbuf__write_sv(buf, name);
+        bool has_sub_cpnt = false;
+
+        while(match(TK_DOT)) {
+            has_sub_cpnt = true;
             consume(TK_ID);
-            name = Token__sv(prev());
+            c11_sbuf__write_char(buf, '.');
+            c11_sbuf__write_sv(buf, Token__sv(prev()));
         }
-        Ctx__emit_store_name(ctx(), name_scope(self), py_namev(name), prev()->line);
+
+        c11_string* path = c11_sbuf__submit(buf);
+        int path_index = Ctx__add_const_string(ctx(), c11_string__sv(path));
+        c11_string__delete(path);
+
+        NameScope scope = name_scope(self);
+
+        Ctx__emit_(ctx(), OP_IMPORT_PATH, path_index, prev()->line);
+        // [module <path>]
+
+        if(!has_sub_cpnt) {
+            if(match(TK_AS)) {
+                // import a as x
+                consume(TK_ID);
+                name = Token__sv(prev());
+            } else {
+                // import a
+            }
+        } else {
+            if(match(TK_AS)) {
+                // import a.b as x
+                consume(TK_ID);
+                name = Token__sv(prev());
+            } else {
+                // import a.b
+                Ctx__emit_(ctx(), OP_POP_TOP, BC_NOARG, BC_KEEPLINE);
+                int index = Ctx__add_const_string(ctx(), name);
+                Ctx__emit_(ctx(), OP_IMPORT_PATH, index, BC_KEEPLINE);
+            }
+        }
+        Ctx__emit_store_name(ctx(), scope, py_namev(name), BC_KEEPLINE);
     } while(match(TK_COMMA));
     consume_end_stmt();
     return NULL;
@@ -2485,7 +2521,7 @@ static Error* compile_normal_import(Compiler* self) {
 // from ..a import b [as c]
 // from .a.b import c [as d]
 // from xxx import *
-static Error* compile_from_import(c11_sbuf* buf, Compiler* self) {
+static Error* compile_from_import(Compiler* self, c11_sbuf* buf) {
     int dots = 0;
 
     while(true) {
@@ -2695,11 +2731,18 @@ static Error* compile_stmt(Compiler* self) {
         }
         case TK_WHILE: check(compile_while_loop(self)); break;
         case TK_FOR: check(compile_for_loop(self)); break;
-        case TK_IMPORT: check(compile_normal_import(self)); break;
+        case TK_IMPORT: {
+            c11_sbuf buf;
+            c11_sbuf__ctor(&buf);
+            err = compile_normal_import(self, &buf);
+            c11_sbuf__dtor(&buf);
+            if(err) return err;
+            break;
+        }
         case TK_FROM: {
             c11_sbuf buf;
             c11_sbuf__ctor(&buf);
-            err = compile_from_import(&buf, self);
+            err = compile_from_import(self, &buf);
             c11_sbuf__dtor(&buf);
             if(err) return err;
             break;

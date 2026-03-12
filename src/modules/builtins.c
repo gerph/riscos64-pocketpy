@@ -3,12 +3,11 @@
 #include "pocketpy/objects/codeobject.h"
 #include "pocketpy/pocketpy.h"
 #include "pocketpy/common/utils.h"
+#include "pocketpy/common/dmath.h"
 #include "pocketpy/objects/object.h"
 #include "pocketpy/common/sstream.h"
 #include "pocketpy/interpreter/vm.h"
 #include "pocketpy/common/_generated.h"
-
-#include <math.h>
 
 
 static bool builtins_exit(int argc, py_Ref argv) {
@@ -173,7 +172,9 @@ static bool builtins_round(int argc, py_Ref argv) {
             py_newint(py_retval(), (py_i64)(x + offset));
             return true;
         }
-        py_f64 factor = pow(10, ndigits);
+        // py_f64 factor = dmath_exp10(ndigits);
+        py_f64 factor = 1.0;
+        for(int i = 0; i < ndigits; i++) factor *= 10.0;
         py_newfloat(py_retval(), (py_i64)(x * factor + offset) / factor);
         return true;
     }
@@ -465,10 +466,12 @@ static bool builtins_compile(int argc, py_Ref argv) {
 static bool builtins__import__(int argc, py_Ref argv) {
     PY_CHECK_ARGC(1);
     PY_CHECK_ARG_TYPE(0, tp_str);
-    int res = py_import(py_tostr(argv));
+    const char* path = py_tostr(py_arg(0));
+    if(path[0] == '.') return ValueError("relative import not allowed here");
+    int res = py_import(path);
     if(res == -1) return false;
     if(res) return true;
-    return ImportError("module '%s' not found", py_tostr(argv));
+    return ImportError("module '%s' not found", path);
 }
 
 static bool NoneType__repr__(int argc, py_Ref argv) {
@@ -536,7 +539,7 @@ py_GlobalRef pk_builtins__register() {
 
 void function__gc_mark(void* ud, c11_vector* p_stack) {
     Function* func = ud;
-    if(func->globals) pk__mark_value(func->globals);
+    pk__mark_value(&func->globals);
     if(func->closure) {
         NameDict* dict = func->closure;
         for(int i = 0; i < dict->capacity; i++) {

@@ -263,8 +263,22 @@ static bool list_extend(int argc, py_Ref argv) {
     List* self = py_touserdata(py_arg(0));
     py_TValue* p;
     int length = pk_arrayview(py_arg(1), &p);
-    if(length == -1) return TypeError("extend() argument must be a list or tuple");
-    c11_vector__extend(self, p, length);
+    if(length >= 0) {
+        c11_vector__extend(self, p, length);
+    } else {
+        // get iterator
+        if (!py_iter(py_arg(1))) return false;
+        py_StackRef tmp_iter = py_pushtmp();
+        py_assign(tmp_iter, py_retval());
+        while(true) {
+            int res = py_next(tmp_iter);
+            if (res == 0) break;
+            if (res == -1) return false;
+            assert(res == 1);
+            c11_vector__push(py_TValue, self, *py_retval());
+        }
+        py_pop();
+    }
     py_newnone(py_retval());
     return true;
 }
@@ -303,6 +317,8 @@ static bool list_index(int argc, py_Ref argv) {
     if(argc == 3) {
         PY_CHECK_ARG_TYPE(2, tp_int);
         start = py_toint(py_arg(2));
+        if(start < 0) start += py_list_len(py_arg(0));
+        if(start < 0) start = 0;
     }
     for(int i = start; i < py_list_len(py_arg(0)); i++) {
         int res = py_equal(py_list_getitem(py_arg(0), i), py_arg(1));
