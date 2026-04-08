@@ -24,7 +24,7 @@ jobs:
         retype build
     ###################################################
     - name: Setup emsdk
-      uses: mymindstorm/setup-emsdk@v14
+      uses: mymindstorm/setup-emsdk@v15
       with:
         version: latest
         actions-cache-folder: 'emsdk-cache-v2'
