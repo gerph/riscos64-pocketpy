@@ -15,7 +15,7 @@ jobs:
   build_win32_amalgamated:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
     - uses: ilammy/msvc-dev-cmd@v1
@@ -28,7 +28,7 @@ jobs:
   build_win32:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
     - uses: ilammy/msvc-dev-cmd@v1
@@ -50,7 +50,7 @@ jobs:
   build_linux:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v6
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
     - name: Setup Clang
@@ -95,7 +95,7 @@ jobs:
   build_darwin:
       runs-on: macos-latest
       steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Compile and Test
@@ -109,7 +109,7 @@ jobs:
   build_android_libs:
       runs-on: ubuntu-latest
       steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - uses: nttld/setup-ndk@v1
@@ -140,7 +140,7 @@ jobs:
   build_darwin_libs:
       runs-on: macos-latest
       steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Compile Frameworks
@@ -155,7 +155,7 @@ jobs:
   build_ios_libs:
       runs-on: macos-latest
       steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Compile Frameworks
@@ -173,7 +173,7 @@ jobs:
         matrix:
           arch: [x86, aarch64, armv7]
       steps:
-        - uses: actions/checkout@v6
+        - uses: actions/checkout@v7
           with:
             submodules: recursive
         - name: Setup Alpine Linux for ${{ matrix.arch }}
